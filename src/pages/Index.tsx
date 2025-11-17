@@ -8,14 +8,12 @@ const Index = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted to-background">
       <div className="text-center px-4 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-        <img 
-          src={hablaooLogo} 
-          alt="Hablaoo" 
+        <img
+          src={hablaooLogo}
+          alt="Hablaoo"
           className="w-48 h-48 mx-auto mb-8 drop-shadow-2xl animate-in zoom-in duration-700"
         />
-        <h1 className="text-5xl md:text-6xl font-bold text-secondary mb-4">
-          Hablaoo
-        </h1>
+        <h1 className="text-5xl md:text-6xl font-bold text-secondary mb-4">Hablaoo</h1>
         <p className="text-2xl md:text-3xl font-semibold mb-6">
           Tu agente inteligente para{" "}
           <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
@@ -23,8 +21,7 @@ const Index = () => {
           </span>
         </p>
         <p className="text-lg text-muted-foreground mb-12 max-w-2xl mx-auto">
-          Automatiza tu negocio de hostelería. Tu agente gestiona llamadas, reservas y
-          pedidos 24/7.
+          Automatiza tu negocio de hostelería. Tu agente gestiona llamadas, reservas y pedidos 24/7.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button
@@ -32,7 +29,7 @@ const Index = () => {
             className="bg-gradient-to-r from-primary to-accent hover:shadow-2xl hover:scale-105 transition-all text-lg px-8 py-6"
             onClick={() => navigate("/auth")}
           >
-            Configurar Mi Agente IA
+            Conócenos
           </Button>
           <Button
             size="lg"

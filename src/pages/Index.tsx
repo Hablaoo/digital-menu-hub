@@ -15,13 +15,13 @@ const Index = () => {
         />
         <h1 className="text-5xl md:text-6xl font-bold text-secondary mb-4">Hablaoo</h1>
         <p className="text-2xl md:text-3xl font-semibold mb-6">
-          Tu agente inteligente para{" "}
+          Tu plataforma de gestión de
           <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             reservas y pedidos
           </span>
         </p>
         <p className="text-lg text-muted-foreground mb-12 max-w-2xl mx-auto">
-          Automatiza tu negocio de hostelería. Tu agente gestiona llamadas, reservas y pedidos 24/7.
+          Gestiona tu negocio con una plataforma completa, adaptable y escalable.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button

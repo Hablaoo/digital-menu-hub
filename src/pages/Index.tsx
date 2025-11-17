@@ -14,12 +14,7 @@ const Index = () => {
           className="w-48 h-48 mx-auto mb-8 drop-shadow-2xl animate-in zoom-in duration-700"
         />
         <h1 className="text-5xl md:text-6xl font-bold text-secondary mb-4">Hablaoo</h1>
-        <p className="text-2xl md:text-3xl font-semibold mb-6">
-          Tu plataforma de gestión de
-          <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            reservas y pedidos
-          </span>
-        </p>
+        <p className="text-2xl md:text-3xl font-semibold mb-6">Tu plataforma de gestión de reservas y pedidos</p>
         <p className="text-lg text-muted-foreground mb-12 max-w-2xl mx-auto">
           Gestiona tu negocio con una plataforma completa, adaptable y escalable.
         </p>

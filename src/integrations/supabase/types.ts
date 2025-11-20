@@ -73,6 +73,44 @@ export type Database = {
         }
         Relationships: []
       }
+      conversaciones: {
+        Row: {
+          created_at: string
+          id: number
+          mensaje: string | null
+          nombre: string | null
+          restaurante_id: number | null
+          telefono: string | null
+          tipo_mensaje: Database["public"]["Enums"]["tipo_mensaje"] | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          mensaje?: string | null
+          nombre?: string | null
+          restaurante_id?: number | null
+          telefono?: string | null
+          tipo_mensaje?: Database["public"]["Enums"]["tipo_mensaje"] | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          mensaje?: string | null
+          nombre?: string | null
+          restaurante_id?: number | null
+          telefono?: string | null
+          tipo_mensaje?: Database["public"]["Enums"]["tipo_mensaje"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversaciones_restaurante_id_fkey"
+            columns: ["restaurante_id"]
+            isOneToOne: false
+            referencedRelation: "restaurantes"
+            referencedColumns: ["restaurante_id"]
+          },
+        ]
+      }
       detallespedido: {
         Row: {
           cantidad: number
@@ -378,6 +416,7 @@ export type Database = {
           nombre: string
           restaurante_id: number
           telefono: string | null
+          telefono_chat: string | null
           usuario_id: string
         }
         Insert: {
@@ -388,6 +427,7 @@ export type Database = {
           nombre: string
           restaurante_id?: number
           telefono?: string | null
+          telefono_chat?: string | null
           usuario_id: string
         }
         Update: {
@@ -398,6 +438,7 @@ export type Database = {
           nombre?: string
           restaurante_id?: number
           telefono?: string | null
+          telefono_chat?: string | null
           usuario_id?: string
         }
         Relationships: [
@@ -424,6 +465,7 @@ export type Database = {
         | "Cancelada"
         | "Completada"
         | "No Show"
+      tipo_mensaje: "Enviado" | "Recibido"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -558,6 +600,7 @@ export const Constants = {
         "Completada",
         "No Show",
       ],
+      tipo_mensaje: ["Enviado", "Recibido"],
     },
   },
 } as const

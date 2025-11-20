@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import hablaooLogo from "@/assets/hablaoo-logo.png";
+import hablaooLogo from "@/assets/logo-hablaoo.jpg";
 
 const Auth = () => {
   const navigate = useNavigate();

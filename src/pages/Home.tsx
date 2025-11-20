@@ -3,14 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, ChefHat, ClipboardList, UtensilsCrossed, LogOut } from "lucide-react";
+import { Calendar, ChefHat, ClipboardList, UtensilsCrossed, LogOut, LayoutDashboard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import hablaooLogo from "@/assets/hablaoo-logo.png";
+import hablaooLogo from "@/assets/logo-hablaoo.jpg";
 
 const Home = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [userName, setUserName] = useState<string>("");
+  const [activeSection, setActiveSection] = useState<string>("dashboard");
+  const [reservations, setReservations] = useState<any[]>([]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -31,6 +33,30 @@ const Home = () => {
       if (profile?.nombre) {
         setUserName(profile.nombre);
       }
+
+      // Get restaurant ID for the user
+      const { data: restaurant } = await supabase
+        .from("restaurantes")
+        .select("restaurante_id")
+        .eq("usuario_id", session.user.id)
+        .single();
+
+      if (restaurant) {
+        // Get reservations
+        const { data: reservasData } = await supabase
+          .from("reservas")
+          .select(`
+            *,
+            clientes (nombre, telefono)
+          `)
+          .eq("restaurante_id", restaurant.restaurante_id)
+          .order("fecha_hora", { ascending: true })
+          .limit(5);
+
+        if (reservasData) {
+          setReservations(reservasData);
+        }
+      }
     };
 
     checkAuth();
@@ -47,113 +73,179 @@ const Home = () => {
 
   const menuOptions = [
     {
+      id: "dashboard",
+      title: "Dashboard",
+      icon: LayoutDashboard,
+    },
+    {
+      id: "carta",
       title: "Carta Digital",
-      description: "Gestiona tu menú digital",
       icon: UtensilsCrossed,
-      gradient: "from-primary to-accent",
-      action: () => toast({ title: "Próximamente", description: "Función en desarrollo" }),
     },
     {
+      id: "calendario",
       title: "Calendario",
-      description: "Administra tus horarios",
       icon: Calendar,
-      gradient: "from-secondary to-primary",
-      action: () => toast({ title: "Próximamente", description: "Función en desarrollo" }),
     },
     {
+      id: "reservas",
       title: "Reservas",
-      description: "Gestiona las reservas",
       icon: ClipboardList,
-      gradient: "from-accent to-primary",
-      action: () => toast({ title: "Próximamente", description: "Función en desarrollo" }),
     },
     {
+      id: "ingenieria",
       title: "Ingeniería de Menú",
-      description: "Optimiza tu carta",
       icon: ChefHat,
-      gradient: "from-secondary to-accent",
-      action: () => toast({ title: "Próximamente", description: "Función en desarrollo" }),
     },
   ];
 
+  const handleNavigation = (section: string) => {
+    if (section === "carta") {
+      navigate("/carta-digital");
+    } else if (section === "dashboard") {
+      setActiveSection("dashboard");
+    } else {
+      setActiveSection(section);
+      toast({ title: "Próximamente", description: "Función en desarrollo" });
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background">
-      {/* Header */}
-      <header className="border-b border-border/50 backdrop-blur-sm bg-card/80 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+    <div className="flex min-h-screen bg-background">
+      {/* Sidebar */}
+      <aside className="w-64 bg-card border-r border-border fixed left-0 top-0 h-full flex flex-col">
+        <div className="p-6 border-b border-border">
           <div className="flex items-center gap-3">
-            <img src={hablaooLogo} alt="Hablaoo" className="w-12 h-12" />
+            <img src={hablaooLogo} alt="Hablaoo" className="w-12 h-12 rounded-lg" />
             <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 Hablaoo
               </h1>
-              <p className="text-sm text-muted-foreground">Panel de Control</p>
+              <p className="text-xs text-muted-foreground">Panel de Control</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            {userName && (
-              <span className="text-sm font-medium text-foreground">
-                Hola, {userName}
-              </span>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLogout}
-              className="hover:bg-destructive hover:text-destructive-foreground transition-colors"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Cerrar Sesión
-            </Button>
-          </div>
         </div>
-      </header>
+
+        <nav className="flex-1 p-4 space-y-2">
+          {menuOptions.map((option) => (
+            <button
+              key={option.id}
+              onClick={() => handleNavigation(option.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                activeSection === option.id
+                  ? "bg-primary text-primary-foreground shadow-lg"
+                  : "hover:bg-muted text-foreground"
+              }`}
+            >
+              <option.icon className="w-5 h-5" />
+              <span className="font-medium">{option.title}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-4 border-t border-border">
+          {userName && (
+            <p className="text-sm text-muted-foreground mb-3 px-2">
+              Hola, <span className="font-semibold text-foreground">{userName}</span>
+            </p>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            className="w-full hover:bg-destructive hover:text-destructive-foreground transition-colors"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Cerrar Sesión
+          </Button>
+        </div>
+      </aside>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-12">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12 animate-in fade-in slide-in-from-top-4 duration-700">
-            <h2 className="text-4xl font-bold text-secondary mb-4">
-              Bienvenido a tu Panel
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Selecciona una opción para comenzar a gestionar tu restaurante
-            </p>
+      <main className="flex-1 ml-64 p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-foreground mb-2">Dashboard</h2>
+            <p className="text-muted-foreground">Bienvenido a tu panel de control</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {menuOptions.map((option, index) => (
+          {/* Dashboard Content */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {menuOptions.slice(1).map((option, index) => (
               <Card
-                key={index}
-                className="group hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 cursor-pointer border-border/50 backdrop-blur overflow-hidden"
-                onClick={option.action}
-                style={{
-                  animationDelay: `${index * 100}ms`,
-                }}
+                key={option.id}
+                className="group hover:shadow-lg hover:scale-[1.02] transition-all duration-300 cursor-pointer border-border/50"
+                onClick={() => handleNavigation(option.id)}
               >
-                <div className={`absolute inset-0 bg-gradient-to-br ${option.gradient} opacity-0 group-hover:opacity-5 transition-opacity`} />
-                <CardHeader className="relative">
-                  <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${option.gradient} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg`}>
-                    <option.icon className="w-8 h-8 text-white" />
+                <CardHeader>
+                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <option.icon className="w-6 h-6 text-white" />
                   </div>
-                  <CardTitle className="text-2xl group-hover:text-primary transition-colors">
+                  <CardTitle className="text-lg group-hover:text-primary transition-colors">
                     {option.title}
                   </CardTitle>
-                  <CardDescription className="text-base">
-                    {option.description}
-                  </CardDescription>
                 </CardHeader>
-                <CardContent className="relative">
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-start text-primary hover:bg-primary/10 group-hover:translate-x-2 transition-transform"
-                  >
-                    Acceder →
-                  </Button>
-                </CardContent>
               </Card>
             ))}
           </div>
+
+          {/* Reservations Preview */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl">Próximas Reservas</CardTitle>
+              <CardDescription>Últimas reservas programadas</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {reservations.length > 0 ? (
+                <div className="space-y-4">
+                  {reservations.map((reserva) => (
+                    <div
+                      key={reserva.reserva_id}
+                      className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted transition-colors"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-foreground">
+                          {reserva.clientes?.nombre || "Cliente"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {reserva.clientes?.telefono || "Sin teléfono"}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-foreground">
+                          {new Date(reserva.fecha_hora).toLocaleDateString()}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(reserva.fecha_hora).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                      <div className="ml-4">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            reserva.estado === "Confirmada"
+                              ? "bg-green-500/10 text-green-500"
+                              : reserva.estado === "Pendiente"
+                              ? "bg-yellow-500/10 text-yellow-500"
+                              : "bg-gray-500/10 text-gray-500"
+                          }`}
+                        >
+                          {reserva.estado}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <ClipboardList className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>No hay reservas programadas</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>

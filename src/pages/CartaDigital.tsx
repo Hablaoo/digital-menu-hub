@@ -187,6 +187,16 @@ const CartaDigital = () => {
   const handleSaveDish = async () => {
     if (!dishForm.nombre.trim() || !dishForm.categoria_id) return;
 
+    // Validar que precio_venta y costo_produccion tengan valores
+    if (!dishForm.precio_venta || !dishForm.costo_produccion) {
+      toast({
+        title: "Error",
+        description: "Debes completar el precio de venta y el costo de producción",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const dishData = {
       nombre: dishForm.nombre,
       descripcion: dishForm.descripcion || null,

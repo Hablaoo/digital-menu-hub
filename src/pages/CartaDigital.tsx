@@ -8,12 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Pencil, Trash2, UtensilsCrossed } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, UtensilsCrossed, Upload, X } from "lucide-react";
 
 interface Category {
   categoria_id: number;
   nombre: string;
   orden: number | null;
+}
+
+interface DishImage {
+  id: number;
+  imagen_url: string;
 }
 
 interface Dish {
@@ -24,6 +29,7 @@ interface Dish {
   costo_produccion: number;
   activo: boolean | null;
   categoria_id: number;
+  imagen?: string;
 }
 
 const CartaDigital = () => {
@@ -50,6 +56,9 @@ const CartaDigital = () => {
     categoria_id: "",
   });
   const [editingDish, setEditingDish] = useState<Dish | null>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [dishImages, setDishImages] = useState<Record<number, string>>({});
 
   useEffect(() => {
     const checkAuthAndLoadData = async () => {
@@ -115,6 +124,24 @@ const CartaDigital = () => {
       });
     } else {
       setDishes(data || []);
+      // Cargar imágenes de los platos
+      if (data && data.length > 0) {
+        const platoIds = data.map(d => d.plato_id);
+        const { data: images } = await supabase
+          .from("platos_imagenes")
+          .select("*")
+          .in("plato_id", platoIds);
+        
+        if (images) {
+          const imageMap: Record<number, string> = {};
+          images.forEach(img => {
+            if (img.plato_id) {
+              imageMap[img.plato_id] = img.imagen_url;
+            }
+          });
+          setDishImages(imageMap);
+        }
+      }
     }
     setIsLoadingDishes(false);
   };
@@ -206,6 +233,8 @@ const CartaDigital = () => {
       activo: true,
     };
 
+    let platoId: number | null = null;
+
     if (editingDish) {
       const { error } = await supabase
         .from("platos")
@@ -218,14 +247,15 @@ const CartaDigital = () => {
           description: "No se pudo actualizar el plato",
           variant: "destructive",
         });
-      } else {
-        toast({ title: "Éxito", description: "Plato actualizado correctamente" });
-        loadDishes();
+        return;
       }
+      platoId = editingDish.plato_id;
     } else {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("platos")
-        .insert(dishData);
+        .insert(dishData)
+        .select()
+        .single();
 
       if (error) {
         toast({
@@ -233,11 +263,52 @@ const CartaDigital = () => {
           description: "No se pudo crear el plato",
           variant: "destructive",
         });
+        return;
+      }
+      platoId = data.plato_id;
+    }
+
+    // Subir imagen si se seleccionó una
+    if (selectedImage && platoId) {
+      const fileExt = selectedImage.name.split('.').pop();
+      const fileName = `${platoId}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("platos-imagenes")
+        .upload(filePath, selectedImage);
+
+      if (uploadError) {
+        toast({
+          title: "Error",
+          description: "No se pudo subir la imagen",
+          variant: "destructive",
+        });
       } else {
-        toast({ title: "Éxito", description: "Plato creado correctamente" });
-        loadDishes();
+        const { data: { publicUrl } } = supabase.storage
+          .from("platos-imagenes")
+          .getPublicUrl(filePath);
+
+        // Guardar URL en platos_imagenes
+        const { error: imageError } = await supabase
+          .from("platos_imagenes")
+          .insert({
+            plato_id: platoId,
+            imagen_url: publicUrl,
+          });
+
+        if (imageError) {
+          toast({
+            title: "Advertencia",
+            description: "El plato se guardó pero hubo un error al guardar la imagen",
+            variant: "destructive",
+          });
+        }
       }
     }
+
+    toast({ title: "Éxito", description: editingDish ? "Plato actualizado correctamente" : "Plato creado correctamente" });
+    loadDishes();
 
     setDishDialogOpen(false);
     setDishForm({
@@ -248,6 +319,8 @@ const CartaDigital = () => {
       categoria_id: "",
     });
     setEditingDish(null);
+    setSelectedImage(null);
+    setPreviewImage(null);
   };
 
   const handleDeleteDish = async (dishId: number) => {
@@ -285,7 +358,25 @@ const CartaDigital = () => {
       costo_produccion: dish.costo_produccion.toString(),
       categoria_id: dish.categoria_id.toString(),
     });
+    setPreviewImage(dishImages[dish.plato_id] || null);
     setDishDialogOpen(true);
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    setPreviewImage(null);
   };
 
   return (
@@ -426,6 +517,8 @@ const CartaDigital = () => {
                         costo_produccion: "",
                         categoria_id: "",
                       });
+                      setSelectedImage(null);
+                      setPreviewImage(null);
                     }}
                     disabled={categories.length === 0}
                   >
@@ -516,6 +609,45 @@ const CartaDigital = () => {
                         />
                       </div>
                     </div>
+                    <div>
+                      <Label htmlFor="dish-image">Imagen del Plato</Label>
+                      <div className="mt-2">
+                        {previewImage ? (
+                          <div className="relative">
+                            <img
+                              src={previewImage}
+                              alt="Preview"
+                              className="w-full h-48 object-cover rounded-lg"
+                            />
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-2 right-2"
+                              onClick={removeImage}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <label
+                            htmlFor="dish-image"
+                            className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary transition-colors"
+                          >
+                            <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                            <span className="text-sm text-muted-foreground">
+                              Haz clic para subir una imagen
+                            </span>
+                            <Input
+                              id="dish-image"
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={handleImageSelect}
+                            />
+                          </label>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button
@@ -530,6 +662,8 @@ const CartaDigital = () => {
                           categoria_id: "",
                         });
                         setEditingDish(null);
+                        setSelectedImage(null);
+                        setPreviewImage(null);
                       }}
                     >
                       Cancelar
@@ -564,52 +698,61 @@ const CartaDigital = () => {
                         {categoryDishes.map((dish) => (
                           <div
                             key={dish.plato_id}
-                            className="p-4 rounded-lg border border-border hover:border-primary transition-colors"
+                            className="rounded-lg border border-border hover:border-primary transition-colors overflow-hidden"
                           >
-                            <div className="flex justify-between items-start mb-2">
-                              <div className="flex-1">
-                                <h4 className="font-medium text-foreground">{dish.nombre}</h4>
-                                {dish.descripcion && (
-                                  <p className="text-sm text-muted-foreground mt-1">
-                                    {dish.descripcion}
-                                  </p>
-                                )}
+                            {dishImages[dish.plato_id] && (
+                              <img
+                                src={dishImages[dish.plato_id]}
+                                alt={dish.nombre}
+                                className="w-full h-48 object-cover"
+                              />
+                            )}
+                            <div className="p-4">
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex-1">
+                                  <h4 className="font-medium text-foreground">{dish.nombre}</h4>
+                                  {dish.descripcion && (
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                      {dish.descripcion}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => openEditDish(dish)}
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDeleteDish(dish.plato_id)}
+                                  >
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="flex gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => openEditDish(dish)}
+                              <div className="flex justify-between items-center mt-3">
+                                <div className="flex gap-4 text-sm">
+                                  <span className="text-foreground font-semibold">
+                                    {dish.precio_venta.toFixed(2)} €
+                                  </span>
+                                  <span className="text-muted-foreground">
+                                    Costo: {dish.costo_produccion.toFixed(2)} €
+                                  </span>
+                                </div>
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs ${
+                                    dish.activo
+                                      ? "bg-green-500/10 text-green-500"
+                                      : "bg-gray-500/10 text-gray-500"
+                                  }`}
                                 >
-                                  <Pencil className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleDeleteDish(dish.plato_id)}
-                                >
-                                  <Trash2 className="w-4 h-4 text-destructive" />
-                                </Button>
-                              </div>
-                            </div>
-                            <div className="flex justify-between items-center mt-3">
-                              <div className="flex gap-4 text-sm">
-                                <span className="text-foreground font-semibold">
-                                  {dish.precio_venta.toFixed(2)} €
-                                </span>
-                                <span className="text-muted-foreground">
-                                  Costo: {dish.costo_produccion.toFixed(2)} €
+                                  {dish.activo ? "Activo" : "Inactivo"}
                                 </span>
                               </div>
-                              <span
-                                className={`px-2 py-1 rounded-full text-xs ${
-                                  dish.activo
-                                    ? "bg-green-500/10 text-green-500"
-                                    : "bg-gray-500/10 text-gray-500"
-                                }`}
-                              >
-                                {dish.activo ? "Activo" : "Inactivo"}
-                              </span>
                             </div>
                           </div>
                         ))}

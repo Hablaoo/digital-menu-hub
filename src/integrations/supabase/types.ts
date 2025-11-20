@@ -329,6 +329,35 @@ export type Database = {
           },
         ]
       }
+      platos_imagenes: {
+        Row: {
+          created_at: string
+          id: number
+          imagen_url: string
+          plato_id: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          imagen_url: string
+          plato_id?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          imagen_url?: string
+          plato_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platos_imagenes_plato_id_fkey"
+            columns: ["plato_id"]
+            isOneToOne: false
+            referencedRelation: "platos"
+            referencedColumns: ["plato_id"]
+          },
+        ]
+      }
       reservas: {
         Row: {
           cliente_id: number

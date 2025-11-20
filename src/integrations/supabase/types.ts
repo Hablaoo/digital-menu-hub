@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      alergenos: {
+        Row: {
+          alergeno_id: number
+          created_at: string | null
+          icono_url: string | null
+          nombre: string
+        }
+        Insert: {
+          alergeno_id?: number
+          created_at?: string | null
+          icono_url?: string | null
+          nombre: string
+        }
+        Update: {
+          alergeno_id?: number
+          created_at?: string | null
+          icono_url?: string | null
+          nombre?: string
+        }
+        Relationships: []
+      }
       categoriasmenu: {
         Row: {
           categoria_id: number
@@ -326,6 +347,36 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "categoriasmenu"
             referencedColumns: ["categoria_id"]
+          },
+        ]
+      }
+      platos_alergenos: {
+        Row: {
+          alergeno_id: number
+          plato_id: number
+        }
+        Insert: {
+          alergeno_id: number
+          plato_id: number
+        }
+        Update: {
+          alergeno_id?: number
+          plato_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platos_alergenos_alergeno_id_fkey"
+            columns: ["alergeno_id"]
+            isOneToOne: false
+            referencedRelation: "alergenos"
+            referencedColumns: ["alergeno_id"]
+          },
+          {
+            foreignKeyName: "platos_alergenos_plato_id_fkey"
+            columns: ["plato_id"]
+            isOneToOne: false
+            referencedRelation: "platos"
+            referencedColumns: ["plato_id"]
           },
         ]
       }

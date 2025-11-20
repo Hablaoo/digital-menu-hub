@@ -59,6 +59,9 @@ const CartaDigital = () => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [dishImages, setDishImages] = useState<Record<number, string>>({});
+  const [alergenos, setAlergenos] = useState<any[]>([]);
+  const [selectedAlergenos, setSelectedAlergenos] = useState<number[]>([]);
+  const [dishAlergenos, setDishAlergenos] = useState<Record<number, any[]>>({});
 
   useEffect(() => {
     const checkAuthAndLoadData = async () => {
@@ -87,7 +90,25 @@ const CartaDigital = () => {
     };
 
     checkAuthAndLoadData();
+    loadAlergenos();
   }, [navigate]);
+
+  const loadAlergenos = async () => {
+    const { data, error } = await supabase
+      .from("alergenos")
+      .select("*")
+      .order("nombre");
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los alérgenos",
+        variant: "destructive",
+      });
+    } else {
+      setAlergenos(data || []);
+    }
+  };
 
   const loadCategories = async (restId: number) => {
     setIsLoadingCategories(true);
@@ -140,6 +161,23 @@ const CartaDigital = () => {
             }
           });
           setDishImages(imageMap);
+        }
+
+        // Cargar alérgenos de los platos
+        const { data: alergenosData } = await supabase
+          .from("platos_alergenos")
+          .select("plato_id, alergeno_id, alergenos(alergeno_id, nombre, icono_url)")
+          .in("plato_id", platoIds);
+
+        if (alergenosData) {
+          const alergenosMap: Record<number, any[]> = {};
+          alergenosData.forEach((rel: any) => {
+            if (!alergenosMap[rel.plato_id]) {
+              alergenosMap[rel.plato_id] = [];
+            }
+            alergenosMap[rel.plato_id].push(rel.alergenos);
+          });
+          setDishAlergenos(alergenosMap);
         }
       }
     }
@@ -307,6 +345,35 @@ const CartaDigital = () => {
       }
     }
 
+    // Guardar relación con alérgenos
+    if (platoId) {
+      // Eliminar relaciones existentes
+      await supabase
+        .from("platos_alergenos")
+        .delete()
+        .eq("plato_id", platoId);
+
+      // Insertar nuevas relaciones
+      if (selectedAlergenos.length > 0) {
+        const alergenosToInsert = selectedAlergenos.map((alergenoId) => ({
+          plato_id: platoId,
+          alergeno_id: alergenoId,
+        }));
+
+        const { error: alergenosError } = await supabase
+          .from("platos_alergenos")
+          .insert(alergenosToInsert);
+
+        if (alergenosError) {
+          toast({
+            title: "Advertencia",
+            description: "El plato se guardó pero hubo un error al guardar los alérgenos",
+            variant: "destructive",
+          });
+        }
+      }
+    }
+
     toast({ title: "Éxito", description: editingDish ? "Plato actualizado correctamente" : "Plato creado correctamente" });
     loadDishes();
 
@@ -349,7 +416,7 @@ const CartaDigital = () => {
     setCategoryDialogOpen(true);
   };
 
-  const openEditDish = (dish: Dish) => {
+  const openEditDish = async (dish: Dish) => {
     setEditingDish(dish);
     setDishForm({
       nombre: dish.nombre,
@@ -359,6 +426,17 @@ const CartaDigital = () => {
       categoria_id: dish.categoria_id.toString(),
     });
     setPreviewImage(dishImages[dish.plato_id] || null);
+
+    // Cargar alérgenos del plato
+    const { data } = await supabase
+      .from("platos_alergenos")
+      .select("alergeno_id")
+      .eq("plato_id", dish.plato_id);
+
+    if (data) {
+      setSelectedAlergenos(data.map((item) => item.alergeno_id));
+    }
+
     setDishDialogOpen(true);
   };
 
@@ -519,6 +597,7 @@ const CartaDigital = () => {
                       });
                       setSelectedImage(null);
                       setPreviewImage(null);
+                      setSelectedAlergenos([]);
                     }}
                     disabled={categories.length === 0}
                   >
@@ -610,6 +689,36 @@ const CartaDigital = () => {
                       </div>
                     </div>
                     <div>
+                      <Label>Alérgenos</Label>
+                      <div className="grid grid-cols-2 gap-2 mt-2 max-h-48 overflow-y-auto p-3 border border-border rounded-md">
+                        {alergenos.map((alergeno) => (
+                          <div key={alergeno.alergeno_id} className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id={`alergeno-${alergeno.alergeno_id}`}
+                              checked={selectedAlergenos.includes(alergeno.alergeno_id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedAlergenos([...selectedAlergenos, alergeno.alergeno_id]);
+                                } else {
+                                  setSelectedAlergenos(
+                                    selectedAlergenos.filter((id) => id !== alergeno.alergeno_id)
+                                  );
+                                }
+                              }}
+                              className="rounded border-border"
+                            />
+                            <label
+                              htmlFor={`alergeno-${alergeno.alergeno_id}`}
+                              className="text-sm cursor-pointer"
+                            >
+                              {alergeno.nombre}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
                       <Label htmlFor="dish-image">Imagen del Plato</Label>
                       <div className="mt-2">
                         {previewImage ? (
@@ -664,6 +773,7 @@ const CartaDigital = () => {
                         setEditingDish(null);
                         setSelectedImage(null);
                         setPreviewImage(null);
+                        setSelectedAlergenos([]);
                       }}
                     >
                       Cancelar
@@ -734,14 +844,27 @@ const CartaDigital = () => {
                                   </Button>
                                 </div>
                               </div>
-                              <div className="flex justify-between items-center mt-3">
-                                <div className="flex gap-4 text-sm">
+                               <div className="flex justify-between items-center mt-3">
+                                <div className="flex gap-4 text-sm items-center">
                                   <span className="text-foreground font-semibold">
                                     {dish.precio_venta.toFixed(2)} €
                                   </span>
                                   <span className="text-muted-foreground">
                                     Costo: {dish.costo_produccion.toFixed(2)} €
                                   </span>
+                                  {dishAlergenos[dish.plato_id] && dishAlergenos[dish.plato_id].length > 0 && (
+                                    <div className="flex gap-1">
+                                      {dishAlergenos[dish.plato_id].map((alergeno) => (
+                                        <img
+                                          key={alergeno.alergeno_id}
+                                          src={alergeno.icono_url}
+                                          alt={alergeno.nombre}
+                                          title={alergeno.nombre}
+                                          className="w-5 h-5 object-contain"
+                                        />
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                                 <span
                                   className={`px-2 py-1 rounded-full text-xs ${

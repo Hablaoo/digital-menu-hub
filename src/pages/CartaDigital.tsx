@@ -66,18 +66,48 @@ const CartaDigital = () => {
   useEffect(() => {
     const checkAuthAndLoadData = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
         navigate("/auth");
         return;
       }
 
       // Get restaurant ID
-      const { data: restaurant } = await supabase
+      const { data: restaurants, error } = await supabase
         .from("restaurantes")
         .select("restaurante_id")
-        .eq("usuario_id", session.user.id)
-        .single();
+        .eq("usuario_id", session.user.id);
+
+      if (error) {
+        console.error("Error fetching restaurant:", error);
+        toast({
+          title: "Error al cargar datos",
+          description: `Error de conexión: ${error.message}`,
+          variant: "destructive",
+        });
+        setIsLoadingCategories(false);
+        setIsLoadingDishes(false);
+        return;
+      }
+
+      if (!restaurants || restaurants.length === 0) {
+        console.error("No restaurant found for user:", session.user.id);
+        toast({
+          title: "Restaurante no encontrado",
+          description: "No se encontró ningún restaurante asociado a tu cuenta.",
+          variant: "destructive",
+        });
+        setIsLoadingCategories(false);
+        setIsLoadingDishes(false);
+        return;
+      }
+
+      // Use the first restaurant found (handle duplicates if any)
+      const restaurant = restaurants[0];
+
+      if (restaurants.length > 1) {
+        console.warn("Multiple restaurants found for user, using first one");
+      }
 
       if (restaurant) {
         setRestaurantId(restaurant.restaurante_id);
@@ -152,7 +182,7 @@ const CartaDigital = () => {
           .from("platos_imagenes")
           .select("*")
           .in("plato_id", platoIds);
-        
+
         if (images) {
           const imageMap: Record<number, string> = {};
           images.forEach(img => {
@@ -185,7 +215,16 @@ const CartaDigital = () => {
   };
 
   const handleSaveCategory = async () => {
-    if (!categoryName.trim() || !restaurantId) return;
+    if (!categoryName.trim()) return;
+
+    if (!restaurantId) {
+      toast({
+        title: "Error",
+        description: "No se encontró la información del restaurante. Por favor recarga la página.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (editingCategory) {
       const { error } = await supabase
@@ -605,7 +644,7 @@ const CartaDigital = () => {
                     Nuevo Plato
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>
                       {editingDish ? "Editar Plato" : "Nuevo Plato"}
@@ -844,7 +883,7 @@ const CartaDigital = () => {
                                   </Button>
                                 </div>
                               </div>
-                               <div className="flex justify-between items-center mt-3">
+                              <div className="flex justify-between items-center mt-3">
                                 <div className="flex gap-4 text-sm items-center">
                                   <span className="text-foreground font-semibold">
                                     {dish.precio_venta.toFixed(2)} €
@@ -867,11 +906,10 @@ const CartaDigital = () => {
                                   )}
                                 </div>
                                 <span
-                                  className={`px-2 py-1 rounded-full text-xs ${
-                                    dish.activo
-                                      ? "bg-green-500/10 text-green-500"
-                                      : "bg-gray-500/10 text-gray-500"
-                                  }`}
+                                  className={`px-2 py-1 rounded-full text-xs ${dish.activo
+                                    ? "bg-green-500/10 text-green-500"
+                                    : "bg-gray-500/10 text-gray-500"
+                                    }`}
                                 >
                                   {dish.activo ? "Activo" : "Inactivo"}
                                 </span>

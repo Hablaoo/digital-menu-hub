@@ -17,7 +17,7 @@ const Home = () => {
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
         navigate("/auth");
         return;
@@ -32,6 +32,31 @@ const Home = () => {
 
       if (profile?.nombre) {
         setUserName(profile.nombre);
+      } else if (session.user.user_metadata?.nombre) {
+        // Fallback: Create profile if it doesn't exist (e.g. first login after email confirmation)
+        const { error: createProfileError } = await supabase
+          .from("perfiles")
+          .insert({
+            id: session.user.id,
+            nombre: session.user.user_metadata.nombre,
+          });
+
+        if (!createProfileError) {
+          setUserName(session.user.user_metadata.nombre);
+
+          // Also create restaurant if needed
+          if (session.user.user_metadata.restaurant_name) {
+            await supabase.from("restaurantes").insert({
+              usuario_id: session.user.id,
+              nombre: session.user.user_metadata.restaurant_name,
+              direccion: session.user.user_metadata.restaurant_address,
+              telefono: session.user.user_metadata.restaurant_phone,
+            });
+            // Reload to fetch the new restaurant data
+            window.location.reload();
+            return;
+          }
+        }
       }
 
       // Get restaurant ID for the user
@@ -131,11 +156,10 @@ const Home = () => {
             <button
               key={option.id}
               onClick={() => handleNavigation(option.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                activeSection === option.id
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeSection === option.id
                   ? "bg-primary text-primary-foreground shadow-lg"
                   : "hover:bg-muted text-foreground"
-              }`}
+                }`}
             >
               <option.icon className="w-5 h-5" />
               <span className="font-medium">{option.title}</span>
@@ -224,13 +248,12 @@ const Home = () => {
                       </div>
                       <div className="ml-4">
                         <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            reserva.estado === "Confirmada"
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${reserva.estado === "Confirmada"
                               ? "bg-green-500/10 text-green-500"
                               : reserva.estado === "Pendiente"
-                              ? "bg-yellow-500/10 text-yellow-500"
-                              : "bg-gray-500/10 text-gray-500"
-                          }`}
+                                ? "bg-yellow-500/10 text-yellow-500"
+                                : "bg-gray-500/10 text-gray-500"
+                            }`}
                         >
                           {reserva.estado}
                         </span>

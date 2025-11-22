@@ -13,15 +13,18 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Login form
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  
+
   // Register form
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerNombre, setRegisterNombre] = useState("");
+  const [restaurantName, setRestaurantName] = useState("");
+  const [restaurantAddress, setRestaurantAddress] = useState("");
+  const [restaurantPhone, setRestaurantPhone] = useState("");
 
   useEffect(() => {
     // Check if user is already logged in
@@ -88,6 +91,9 @@ const Auth = () => {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
             nombre: registerNombre,
+            restaurant_name: restaurantName,
+            restaurant_address: restaurantAddress,
+            restaurant_phone: restaurantPhone,
           }
         }
       });
@@ -102,18 +108,6 @@ const Auth = () => {
       }
 
       if (data.user) {
-        // Insert into perfiles table
-        const { error: profileError } = await supabase
-          .from("perfiles")
-          .insert({
-            id: data.user.id,
-            nombre: registerNombre,
-          });
-
-        if (profileError) {
-          console.error("Error creating profile:", profileError);
-        }
-
         toast({
           title: "Registro exitoso",
           description: "Por favor verifica tu correo electrónico",
@@ -134,9 +128,9 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted to-background p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
-          <img 
-            src={hablaooLogo} 
-            alt="Hablaoo" 
+          <img
+            src={hablaooLogo}
+            alt="Hablaoo"
             className="w-32 h-32 mx-auto mb-4 drop-shadow-lg"
           />
           <h1 className="text-3xl font-bold text-secondary mb-2">Hablaoo</h1>
@@ -156,7 +150,7 @@ const Auth = () => {
                 <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
                 <TabsTrigger value="register">Registrarse</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="login">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
@@ -183,8 +177,8 @@ const Auth = () => {
                       disabled={isLoading}
                     />
                   </div>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     className="w-full bg-gradient-to-r from-primary to-accent hover:shadow-lg hover:scale-[1.02] transition-all"
                     disabled={isLoading}
                   >
@@ -192,7 +186,7 @@ const Auth = () => {
                   </Button>
                 </form>
               </TabsContent>
-              
+
               <TabsContent value="register">
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div className="space-y-2">
@@ -232,9 +226,50 @@ const Auth = () => {
                       minLength={6}
                     />
                   </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-gradient-to-r from-secondary to-accent hover:shadow-lg hover:scale-[1.02] transition-all"
+
+                  <div className="border-t pt-4 mt-4">
+                    <h3 className="text-lg font-medium mb-4">Datos del Restaurante</h3>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="restaurant-name">Nombre del Restaurante</Label>
+                        <Input
+                          id="restaurant-name"
+                          type="text"
+                          placeholder="Nombre de tu negocio"
+                          value={restaurantName}
+                          onChange={(e) => setRestaurantName(e.target.value)}
+                          required
+                          disabled={isLoading}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="restaurant-address">Dirección</Label>
+                        <Input
+                          id="restaurant-address"
+                          type="text"
+                          placeholder="Dirección completa"
+                          value={restaurantAddress}
+                          onChange={(e) => setRestaurantAddress(e.target.value)}
+                          disabled={isLoading}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="restaurant-phone">Teléfono del Restaurante</Label>
+                        <Input
+                          id="restaurant-phone"
+                          type="tel"
+                          placeholder="Teléfono de contacto"
+                          value={restaurantPhone}
+                          onChange={(e) => setRestaurantPhone(e.target.value)}
+                          disabled={isLoading}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-secondary to-accent hover:shadow-lg hover:scale-[1.02] transition-all mt-6"
                     disabled={isLoading}
                   >
                     {isLoading ? "Cargando..." : "Crear Cuenta"}
